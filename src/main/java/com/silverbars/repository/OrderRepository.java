@@ -1,13 +1,14 @@
 package com.silverbars.repository;
 
-import com.silverbars.model.OrderEntity;
+import com.silverbars.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-public interface OrderRepository extends JpaRepository<OrderEntity, Long > {
+import javax.transaction.Transactional;
 
-   /* @Query("SELECT u FROM UserEntity u WHERE LOWER(u.firstName) = LOWER(:name)")
-    UserEntity retrieveByFirstName(@Param("name") String name);*/
+public interface OrderRepository extends JpaRepository<Order, Long > {
+
+    @Transactional
+    @Override
+    void deleteById(Long id);
 
 }
