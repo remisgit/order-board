@@ -19,7 +19,7 @@ import java.util.Optional;
 
 @Slf4j
 @Controller
-public class RestResources {
+public class RestController {
 
     @Autowired
     OrderRepository orderRepository;

@@ -17,9 +17,9 @@ import javax.persistence.Table;
 @Table(name = "V_ORDER_SUMMARY")
 public class OrderSummary {
 
-    /*@Id
+    @Id
     private Long id;
-*/
+
     private Long orderQuantity;
 
     private Integer orderPrice;
