@@ -8,6 +8,6 @@ import javax.transaction.Transactional;
 public interface OrderRepository extends JpaRepository<Order, Long > {
 
     @Transactional
-    public Order removeById(Long id);
+    public void deleteById(Long id);
 
 }

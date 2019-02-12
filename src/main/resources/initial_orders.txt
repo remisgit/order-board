@@ -1,7 +1,0 @@
-[
-{"id":1,"userId":"USER_1","orderQuantity":3.5,"orderPrice":300,"buySell":"BUY"}
-,{"id":2,"userId":"USER_2","orderQuantity":4.0,"orderPrice":340,"buySell":"BUY"}
-,{"id":3,"userId":"USER_3","orderQuantity":4.0,"orderPrice":340,"buySell":"SELL"}
-,{"id":4,"userId":"USER_2","orderQuantity":5.0,"orderPrice":340,"buySell":"SELL"}
-,{"id":5,"userId":"USER_3","orderQuantity":2.1,"orderPrice":740,"buySell":"SELL"}
-]

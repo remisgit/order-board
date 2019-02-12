@@ -4,27 +4,22 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.silverbars.model.Order;
 import com.silverbars.model.OrderSummary;
-import com.silverbars.repository.EntityInMemoryCache;
-import com.silverbars.repository.HashMapOrderService;
+import lombok.Setter;
+import org.apache.commons.io.FileUtils;
 import org.hamcrest.collection.IsIterableContainingInAnyOrder;
+import org.hamcrest.collection.IsIterableContainingInOrder;
 import org.junit.Assert;
-import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicLong;
 
+import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,52 +27,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@RunWith(SpringRunner.class)
-@ActiveProfiles("cache_persisted")
-@SpringBootTest
-@AutoConfigureMockMvc
-public class RestControllerIntegrationTest {
+@Setter
+@Transactional
+public abstract class BaseRestControllerIntegrationTest {
 
-    /*@Configuration
-    //@ComponentScan("comcom.silverbars")
-    public static class SpringConfig {
-        @Bean
-        public ConcurrentMap<Long,Order> entitiesMap(){
-            ConcurrentHashMap<Long, Order> cache = new ConcurrentHashMap<>();
-            return new ConcurrentHashMap<>();
-        }
+    static {
+        System.setProperty("init.orders.file.path", "src/test/resources/initial_orders.txt");
     }
-
-    ConcurrentHashMap<Long, Order> cache;*/
-
-    @Autowired
-    private MockMvc mvc;
-
-    @Autowired
-    List<Order> initialOrderList;
-
-    @Autowired
-    private HashMapOrderService hashMapOrderService;
-
-    @Autowired
-    private EntityInMemoryCache entityInMemoryCache;
-
-    @Autowired
-    AtomicLong cachedItemsIdCounter;
-
-    @Autowired
-    public ConcurrentMap<Long,Order> entitiesMap;
 
     private ObjectMapper jsonObjectMapper = new ObjectMapper();
 
-    @Before
-    public void setup() throws Exception {
-        entitiesMap.clear();
-        cachedItemsIdCounter.set(0);
-        initialOrderList.forEach(o -> {
-            entityInMemoryCache.save(entityInMemoryCache.getNextId(),o);
-        });
-    }
+    protected MockMvc mvc;
+
+    protected List<Order> initialOrderList;
 
     @Test
     public void testGetAllOrders() throws Exception {
@@ -87,7 +49,8 @@ public class RestControllerIntegrationTest {
                 .andReturn();
 
         String content = rezult.getResponse().getContentAsString();
-        List<Order> orders = jsonObjectMapper.readValue(content, new TypeReference<List<Order>>() {});
+        List<Order> orders = jsonObjectMapper.readValue(content, new TypeReference<List<Order>>() {
+        });
 
         Assert.assertThat(orders, IsIterableContainingInAnyOrder.containsInAnyOrder(initialOrderList.toArray()));
     }
@@ -95,16 +58,15 @@ public class RestControllerIntegrationTest {
     @Test
     public void testRegisterNewOrder() throws Exception {
 
-        Order newOrderToBePersisted = Order.builder().userId("testUser_99").build();
+        Order newOrderToBePersisted = Order.builder().userId("testUser_99").orderQuantity(1.0).orderPrice(1L).build();
         MvcResult rezult = mvc.perform(post("/register").contentType(MediaType.APPLICATION_JSON_UTF8)
                 .content(jsonObjectMapper.writeValueAsString(newOrderToBePersisted)))
                 .andExpect(status().isOk())
-                //.andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
                 .andReturn();
 
         Order persistedOrder = getOrderFromResultJson(rezult);
-        Assert.assertEquals(Long.valueOf(6L),persistedOrder.getId());
-        Assert.assertEquals("testUser_99",persistedOrder.getUserId());
+        assertThat(persistedOrder.getId()).isEqualTo(9L);
+        assertThat(persistedOrder.getUserId()).isEqualTo("testUser_99");
 
         //check if it was actually persisted
         MvcResult getOrderRezult = mvc.perform(get("/getorder").param("orderId", persistedOrder.getId().toString()))
@@ -113,14 +75,12 @@ public class RestControllerIntegrationTest {
                 .andReturn();
 
         Order actualOrder = getOrderFromResultJson(rezult);
-        Assert.assertEquals(newOrderToBePersisted.getUserId(),actualOrder.getUserId());
+        assertThat(newOrderToBePersisted.getUserId()).isEqualTo(actualOrder.getUserId());
     }
-
-
 
     @Test
     public void testCancelExistingOrder() throws Exception {
-        Order newOrder = Order.builder().userId("testUser_101").build();
+        Order newOrder = Order.builder().userId("testUser_101").orderQuantity(1.0).orderPrice(1L).build();
         MvcResult registerRezult = mvc.perform(post("/register").contentType(MediaType.APPLICATION_JSON_UTF8)
                 .content(jsonObjectMapper.writeValueAsString(newOrder)))
                 .andExpect(status().isOk())
@@ -133,23 +93,21 @@ public class RestControllerIntegrationTest {
                 .andReturn();
 
         Order canceledOrder = getOrderFromResultJson(cancelOrderRezult);
-        Assert.assertEquals("persisted order is expected to be equal to caneled order",newOrder.getUserId(),canceledOrder.getUserId());
+        Assert.assertEquals("persisted order is expected to be equal to caneled order", newOrder.getUserId(), canceledOrder.getUserId());
 
         mvc.perform(get("/getorder").param("orderId", canceledOrder.getId().toString()))
                 .andExpect(status().isNotFound())
-                .andExpect(status().reason(equalTo("Order with id = [6] not found")))
+                .andExpect(status().reason(equalTo(format("Order with id = [%s] not found",canceledOrder.getId().toString()))))
                 .andReturn();
-
     }
 
     @Test
     public void testCancelNonExistingOrderFail() throws Exception {
         mvc.perform(get("/cancel").param("orderId", "103"))
                 .andExpect(status().isNotFound())
-                .andExpect(status().reason(equalTo("could not cancel order as it does not exist, orderId = [103]")))
+                .andExpect(status().reason(equalTo("could not cancel order as it does not exist, orderId = [103]" )))
                 .andReturn();
     }
-
 
     @Test
     public void testGetSummary() throws Exception {
@@ -158,14 +116,16 @@ public class RestControllerIntegrationTest {
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
                 .andReturn();
         String persistedContent = result.getResponse().getContentAsString();
-        List<OrderSummary> summary = jsonObjectMapper.readValue(persistedContent, new TypeReference<List<OrderSummary>>() {});
-        assertThat(summary.size()).isEqualTo(4);
+        List<OrderSummary> actualSummaryList = jsonObjectMapper.readValue(persistedContent, new TypeReference<List<OrderSummary>>() {
+        });
 
-        //more on
-        //http://joel-costigliola.github.io/assertj/
-        System.out.println();
+        String json = FileUtils.readFileToString(new File("src/test/resources/expected_orders_summary_list.txt"));
+        ObjectMapper mapper = new ObjectMapper();
+        List<OrderSummary> expectedOrderSummaryList = mapper.readValue(json, new TypeReference<List<OrderSummary>>() {
+        });
+
+        Assert.assertThat(actualSummaryList, IsIterableContainingInOrder.contains(expectedOrderSummaryList.toArray()));
     }
-
 
     private Order getOrderFromResultJson(MvcResult rezult) throws IOException {
         String persistedContent = rezult.getResponse().getContentAsString();

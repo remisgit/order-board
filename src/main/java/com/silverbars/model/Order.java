@@ -1,6 +1,5 @@
 package com.silverbars.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -28,7 +27,6 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "order_seq")
     @SequenceGenerator(sequenceName = "SEQ_ORDER", allocationSize = 1, name = "order_seq")
-    //@JsonIgnore
     private Long id;
 
     private String userId;

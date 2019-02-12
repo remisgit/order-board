@@ -12,7 +12,7 @@ public interface OrderPersistenceService {
 
     Order persistOrder(Order newOrder);
 
-    Optional<Order> cancelOrder(Long id);
+    void cancelOrder(Long id);
 
     List<Order> getAllOrders();
 

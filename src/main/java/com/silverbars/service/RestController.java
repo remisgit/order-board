@@ -2,9 +2,7 @@ package com.silverbars.service;
 
 import com.silverbars.model.Order;
 import com.silverbars.model.OrderSummary;
-import com.silverbars.repository.OrderRepository;
 import com.silverbars.repository.OrderPersistenceService;
-import com.silverbars.repository.OrderSummaryRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,16 +17,12 @@ import org.springframework.web.server.ResponseStatusException;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 import static java.lang.String.format;
 
 @Slf4j
 @Controller
 public class RestController {
-
-    @Autowired
-    private OrderSummaryRepository orderSummaryRepository;
 
     @Autowired
     private OrderPersistenceService orderPersitnaceService;
@@ -45,7 +39,6 @@ public class RestController {
     public Order getOrderById(@RequestParam(name="orderId") Long orderId) {
         log.info("requested order by id, orderId = {}", orderId);
         Optional<Order> orderOpt = orderPersitnaceService.getOrder(orderId);
-        //Order order = orderOpt.orElseThrow(() -> new RuntimeException(format("Order with id=%d not found",orderId)));
         Order order = orderOpt.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,(format("Order with id = [%d] not found", orderId))));
         log.info("requested order by id, orderId = {}, returning order {}", orderId, order);
         return order;
@@ -55,7 +48,8 @@ public class RestController {
     @ResponseBody
     public Order registerNewOrder(@RequestBody Order newOrder) throws IOException {
         log.info("requested to register a new order, newOrder = {}", newOrder);
-        Order saved = orderPersitnaceService.persistOrder(newOrder);
+        Order saved = orderPersitnaceService.persistOrder(newOrder.toBuilder().id(null).build());//always persist new order, even if id is provided
+        log.info("persisted order id = []", saved.getId());
         return saved;
     }
 
@@ -63,11 +57,10 @@ public class RestController {
     @ResponseBody
     public Order removeOrder(@RequestParam(name="orderId") Long orderId) {
         log.info("requested to cancel order by id = {}", orderId);
-        Optional<Order> orderRemovedOpt = orderPersitnaceService.cancelOrder(orderId);
-
-        //Order orderToBeRemoved = orderRemovedOpt.orElseThrow(()-> new RuntimeException("could not cancel order as it does not exist, orderId =" + orderId));
+        Optional<Order> orderRemovedOpt = orderPersitnaceService.getOrder(orderId);
         Order orderToBeRemoved = orderRemovedOpt.orElseThrow(()->
             new ResponseStatusException(HttpStatus.NOT_FOUND, format("could not cancel order as it does not exist, orderId = [%d]", orderId)));
+        orderPersitnaceService.cancelOrder(orderId);
         return orderToBeRemoved;
     }
 
@@ -75,10 +68,7 @@ public class RestController {
     @ResponseBody
     public List<OrderSummary> getSummary() {
         log.info("retrieving aggregated orders");
-        List<OrderSummary> summaryList = orderSummaryRepository.getSummary();
-        return summaryList;
+        return orderPersitnaceService.getSummary();
     }
-
-
 
 }

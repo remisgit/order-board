@@ -2,6 +2,7 @@ package com.silverbars.repository;
 
 import com.silverbars.model.Order;
 import com.silverbars.model.OrderSummary;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -11,16 +12,25 @@ import java.util.List;
 import java.util.Optional;
 
 @Profile("db_persisted")
+@Slf4j
 @Repository
 public class JPAOrderService implements OrderPersistenceService {
 
     @Autowired
-    OrderRepository orderRepository;
+    private OrderRepository orderRepository;
+
+    @Autowired
+    private OrderSummaryRepository orderSummaryRepository;
+
+    @Autowired
+    private List<Order> initialOrderList;
 
     @PostConstruct
-    public void postInit(){
-        System.out.println("JPAOrderService -----------------------------------------------");
-        System.out.println("orderRepository="+orderRepository);
+    public void postInit() {
+        log.info("initialisedin db with initial order list of size {}", initialOrderList.size());
+        initialOrderList.forEach(o -> {
+            orderRepository.save(o.toBuilder().id(null).build());//force to get id from a sequence
+        });
     }
 
     @Override
@@ -34,8 +44,8 @@ public class JPAOrderService implements OrderPersistenceService {
     }
 
     @Override
-    public Optional<Order> cancelOrder(Long id) {
-        return Optional.ofNullable(orderRepository.removeById(id));
+    public void cancelOrder(Long id) {
+        orderRepository.deleteById(id);
     }
 
     @Override
@@ -45,7 +55,7 @@ public class JPAOrderService implements OrderPersistenceService {
 
     @Override
     public List<OrderSummary> getSummary() {
-        return null;
+        return orderSummaryRepository.getSummary();
     }
 
 }

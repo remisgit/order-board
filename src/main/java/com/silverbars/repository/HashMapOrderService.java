@@ -3,7 +3,6 @@ package com.silverbars.repository;
 import com.silverbars.model.Order;
 import com.silverbars.model.OrderSummary;
 import lombok.extern.slf4j.Slf4j;
-import org.h2.api.Aggregate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
@@ -13,10 +12,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.silverbars.Constants.BUY_ORDER;
+import static com.silverbars.Constants.SELL_ORDER;
 import static java.util.stream.Collectors.toList;
 
 
@@ -40,7 +40,6 @@ public class HashMapOrderService implements OrderPersistenceService {
         });
     }
 
-
     @Override
     public Optional<Order> getOrder(Long id) {
         return Optional.ofNullable(entityInMemoryCache.get(id));
@@ -55,9 +54,8 @@ public class HashMapOrderService implements OrderPersistenceService {
     }
 
     @Override
-    public Optional<Order> cancelOrder(Long id) {
-        Order order = entityInMemoryCache.remove(id);
-        return Optional.ofNullable(order);
+    public void cancelOrder(Long id) {
+        entityInMemoryCache.remove(id);
     }
 
     @Override
@@ -74,12 +72,12 @@ public class HashMapOrderService implements OrderPersistenceService {
                 );
 
         return Stream.concat(
-                aggregated.get("BUY").entrySet().stream()
+                aggregated.get(SELL_ORDER).entrySet().stream()
                         .sorted(Comparator.comparingLong(Map.Entry<Long, Double>::getKey))
-                        .map(e -> OrderSummary.builder().orderPrice(e.getKey()).orderQuantity(e.getValue()).buySell("BUY").build())
-                ,aggregated.get("SELL").entrySet().stream()
+                        .map(e -> OrderSummary.builder().orderPrice(e.getKey()).orderQuantity(e.getValue()).buySell(SELL_ORDER).build())
+                ,aggregated.get(BUY_ORDER).entrySet().stream()
                         .sorted(Comparator.comparingLong(Map.Entry<Long, Double>::getKey).reversed())
-                        .map(e -> OrderSummary.builder().orderPrice(e.getKey()).orderQuantity(e.getValue()).buySell("SELL").build())
+                        .map(e -> OrderSummary.builder().orderPrice(e.getKey()).orderQuantity(e.getValue()).buySell(BUY_ORDER).build())
         ).collect(toList());
     }
 
