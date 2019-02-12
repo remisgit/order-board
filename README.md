@@ -26,10 +26,7 @@ java -Dspring.profiles.active=cache_persisted [optional: -Dinit.orders.file.path
  <br/>
 #make new order  http://localhost:8080/register  <br/>
  <br/>
-curl --header "Content-Type: application/json" \
-  --request POST \
-  --data '{"id":6,"userId":"USER_2","orderQuantity":1.0,"orderPrice":500,"buySell":"BUY"}' \
-  http://localhost:8080/register
+curl --header "Content-Type: application/json" --request POST \--data '{"id":6,"userId":"USER_2","orderQuantity":1.0,"orderPrice":500,"buySell":"BUY"}' http://localhost:8080/register
  <br/>
   <br/>
 #return  all registred orders so far <br/>
